@@ -21,6 +21,8 @@ func inStd(node *callgraph.Node) bool {
 	return pkg.Goroot
 }
 
+// 根据各种条件过滤调用图,
+// 生成dot文件
 func printOutput(
 	prog *ssa.Program,
 	mainPkg *ssa.Package,

@@ -1,5 +1,4 @@
 // go-callvis: a tool to help visualize the call graph of a Go program.
-//
 package main
 
 import (
@@ -92,12 +91,15 @@ func openBrowser(url string) {
 
 func outputDot(fname string, outputFormat string) {
 	// get cmdline default for analysis
+	// 使用参数初始化render参数(renderOpts),缓存目录,焦点(focus)包等
 	Analysis.OptsSetup()
 
+	// 处理这些传入的renderOpts参数, limit，group，ignore，include等逗号分隔字符串转成字符串数组
 	if e := Analysis.ProcessListArgs(); e != nil {
 		log.Fatalf("%v\n", e)
 	}
 
+	// 如果指定了focus包，那么找出这个ssa package，调用printOutput
 	output, err := Analysis.Render()
 	if err != nil {
 		log.Fatalf("%v\n", err)
@@ -118,7 +120,7 @@ func outputDot(fname string, outputFormat string) {
 	}
 }
 
-//noinspection GoUnhandledErrorResult
+// noinspection GoUnhandledErrorResult
 func main() {
 	flag.Parse()
 
@@ -145,7 +147,10 @@ func main() {
 	if err := Analysis.DoAnalysis(CallGraphType(*callgraphAlgo), "", tests, args); err != nil {
 		log.Fatal(err)
 	}
-
+	// web或者文件模式都是差不多的调用路径
+	// DoAnalysis -> OptsSetup -> ProcessListArgs -> Render -> dotToImage
+	// 其中DoAnalysis已经完成了SSA program的生成，并且调用了相应的静态分析法得到了call graph。后面都是在处理显示的问题
+	// focus, limit 等都是显示控制参数
 	http.HandleFunc("/", handler)
 
 	if *outputFile == "" {
@@ -160,6 +165,8 @@ func main() {
 			log.Fatal(err)
 		}
 	} else {
+		// outputFile 指定则文件输出模式；不指定则服务模式
+		// outputFormat dot程序输出格式,svg,png,jpg等, 默认svg
 		outputDot(*outputFile, *outputFormat)
 	}
 }

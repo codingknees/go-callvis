@@ -31,7 +31,7 @@ const (
 	CallGraphTypePointer               = "pointer"
 )
 
-//==[ type def/func: analysis   ]===============================================
+// ==[ type def/func: analysis   ]===============================================
 type renderOpts struct {
 	cacheDir string
 	focus    string
@@ -60,7 +60,7 @@ func mainPackages(pkgs []*ssa.Package) ([]*ssa.Package, error) {
 	return mains, nil
 }
 
-//==[ type def/func: analysis   ]===============================================
+// ==[ type def/func: analysis   ]===============================================
 type analysis struct {
 	opts      *renderOpts
 	prog      *ssa.Program
@@ -79,11 +79,12 @@ func (a *analysis) DoAnalysis(
 ) error {
 	cfg := &packages.Config{
 		Mode:       packages.LoadAllSyntax,
-		Tests:      tests,
-		Dir:        dir,
+		Tests:      tests, // 是否包含测试包
+		Dir:        dir,   // 查询操作时的工作目录
 		BuildFlags: getBuildFlags(),
 	}
-
+	// args 非flag参数，指定要加载的包的pattern，限定1个
+	// usage中说，要是main包，否则要设置test参数
 	initial, err := packages.Load(cfg, args...)
 	if err != nil {
 		return err
@@ -117,6 +118,7 @@ func (a *analysis) DoAnalysis(
 		}
 		graph = rta.Analyze(roots, true).CallGraph
 	case CallGraphTypePointer:
+		// 有main函数的main包列表
 		mains, err := mainPackages(prog.AllPackages())
 		if err != nil {
 			return err
@@ -126,6 +128,7 @@ func (a *analysis) DoAnalysis(
 			Mains:          mains,
 			BuildCallGraph: true,
 		}
+		// 指针分析法pta
 		ptares, err := pointer.Analyze(config)
 		if err != nil {
 			return err
@@ -137,10 +140,10 @@ func (a *analysis) DoAnalysis(
 
 	//cg.DeleteSyntheticNodes()
 
-	a.prog = prog
-	a.pkgs = pkgs
-	a.mainPkg = mainPkg
-	a.callgraph = graph
+	a.prog = prog       // ssa.Program
+	a.pkgs = pkgs       // ssa.Packages
+	a.mainPkg = mainPkg // 第一个带main函数的main包(Static, CHA为nil)
+	a.callgraph = graph // callgraph.Graph
 	return nil
 }
 
@@ -243,6 +246,7 @@ func (a *analysis) Render() ([]byte, error) {
 		focusPkg *types.Package
 	)
 
+	// focus规则: 带/则被认为是具体的包；不带/则被认为是包名, 需要是唯一一个
 	if a.opts.focus != "" {
 		if ssaPkg = a.prog.ImportedPackage(a.opts.focus); ssaPkg == nil {
 			if strings.Contains(a.opts.focus, "/") {
